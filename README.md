@@ -41,5 +41,4 @@
 
 ## 🚀 5. Стъпки за стартиране
 1. Клонирайте репозиторито:
-   ```bash
-   git clone [https://github.com/your-username/MobileApps2025-](https://github.com/your-username/MobileApps2025-)<ФакултетенНомер>.git
+git clone https://github.com/Vasil1411/MobileApps2026.git
