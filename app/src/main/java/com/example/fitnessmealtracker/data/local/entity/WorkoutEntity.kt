@@ -9,5 +9,6 @@ data class WorkoutEntity(
     val id: Long = 0L,
     val title: String,
     val date: String,
-    val durationMinutes: Int
+    val durationMinutes: Int,
+    val caloriesBurned: Int
 )
