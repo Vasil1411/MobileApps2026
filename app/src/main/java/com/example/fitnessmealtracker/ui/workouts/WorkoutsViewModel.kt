@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.fitnessmealtracker.data.local.entity.ExerciseEntity
 import com.example.fitnessmealtracker.data.local.entity.WorkoutEntity
 import com.example.fitnessmealtracker.data.repository.WorkoutRepositoryImpl
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class WorkoutViewModel(private val repository: WorkoutRepositoryImpl) : ViewModel() {
-
+class WorkoutsViewModel(private val repository: WorkoutRepositoryImpl) : ViewModel() {
 
     val allWorkouts: StateFlow<List<WorkoutEntity>> = repository.allWorkouts
         .stateIn(
@@ -21,9 +21,17 @@ class WorkoutViewModel(private val repository: WorkoutRepositoryImpl) : ViewMode
             initialValue = emptyList()
         )
 
-    fun insertWorkout(workout: WorkoutEntity) {
+    fun insertWorkout(title: String, date: String, duration: Int, calories: Int, onWorkoutInserted: (Long) -> Unit = {}) {
         viewModelScope.launch {
-            repository.insertWorkout(workout)
+            val workoutId = repository.insertWorkout(
+                WorkoutEntity(
+                    title = title,
+                    date = date,
+                    durationMinutes = duration,
+                    caloriesBurned = calories
+                )
+            )
+            onWorkoutInserted(workoutId)
         }
     }
 
@@ -37,6 +45,11 @@ class WorkoutViewModel(private val repository: WorkoutRepositoryImpl) : ViewMode
         viewModelScope.launch {
             repository.deleteWorkout(workout)
         }
+    }
+
+    // --- ДОБАВИ ТУК ТОЗИ МЕТОД ЗА УПРАЖНЕНИЯТА ---
+    fun getExercisesForWorkout(workoutId: Long): Flow<List<ExerciseEntity>> {
+        return repository.getExercisesForWorkout(workoutId)
     }
 
     fun insertExercise(exercise: ExerciseEntity) {
@@ -58,12 +71,11 @@ class WorkoutViewModel(private val repository: WorkoutRepositoryImpl) : ViewMode
     }
 }
 
-
-class WorkoutViewModelFactory(private val repository: WorkoutRepositoryImpl) : ViewModelProvider.Factory {
+class WorkoutsViewModelFactory(private val repository: WorkoutRepositoryImpl) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(WorkoutViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(WorkoutsViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return WorkoutViewModel(repository) as T
+            return WorkoutsViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
