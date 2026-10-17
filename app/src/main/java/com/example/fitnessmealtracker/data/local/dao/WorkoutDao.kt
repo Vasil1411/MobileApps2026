@@ -35,4 +35,7 @@ interface WorkoutDao {
 
     @Delete
     suspend fun deleteExercise(exercise: ExerciseEntity)
+
+    @Query("SELECT SUM(caloriesBurned) FROM workouts WHERE date = :todayDate")
+    fun getTotalCaloriesBurnedForDate(todayDate: String): Flow<Int?>
 }

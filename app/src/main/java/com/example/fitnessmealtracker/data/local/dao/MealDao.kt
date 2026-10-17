@@ -22,4 +22,7 @@ interface MealDao {
 
     @Delete
     suspend fun deleteMeal(meal: MealEntity)
+
+    @Query("SELECT SUM(calories) FROM meals WHERE date = :todayDate")
+    fun getTotalCaloriesForDate(todayDate: String): Flow<Int?>
 }
