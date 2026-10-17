@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     kotlin("android")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.20"
 }
 
 android {
@@ -26,6 +27,10 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+
+    buildFeatures {
+        compose = true
     }
 
     compileOptions {
@@ -67,4 +72,29 @@ dependencies {
 
     // RecyclerView (за списъците)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+
+
+    val composeBom = platform("androidx.compose:compose-bom:2024.04.01")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
+    implementation("androidx.activity:activity-compose:1.9.0")
+
+
+    dependencies {
+        // CameraX линкове за работа с камерата
+        val cameraxVersion = "1.3.1"
+        implementation("androidx.camera:camera-core:$cameraxVersion")
+        implementation("androidx.camera:camera-camera2:$cameraxVersion")
+        implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+        implementation("androidx.camera:camera-view:$cameraxVersion")
+
+        // Google ML Kit за сканиране на баркодове и QR кодове
+        implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    }
 }
