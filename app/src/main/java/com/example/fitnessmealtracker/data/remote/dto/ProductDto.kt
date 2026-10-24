@@ -8,6 +8,10 @@ data class ProductResponse(
     val product: ProductDto?
 )
 
+data class ProductSearchResponse(
+    @SerializedName("products")
+    val products: List<ProductDto>?
+)
 data class ProductDto(
     @SerializedName("product_name")
     val productName: String?,
