@@ -1,5 +1,6 @@
 package com.example.fitnessmealtracker.ui.meals
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,25 +9,32 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.fitnessmealtracker.data.local.entity.MealEntity
-import com.example.fitnessmealtracker.util.ValidationUtils
+import com.example.fitnessmealtracker.data.remote.dto.ProductDto
 import com.example.fitnessmealtracker.util.ValidationResult
+import com.example.fitnessmealtracker.util.ValidationUtils
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MealsScreen(viewModel: MealViewModel) {
+    val context = LocalContext.current
     val meals by viewModel.allMeals.collectAsState()
 
     var isScanning by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    // Форма за въвеждане
-    var nameInput by remember { mutableStateOf("") }
-    var caloriesInput by remember { mutableStateOf("") }
-    var proteinInput by remember { mutableStateOf("") }
-    var carbsInput by remember { mutableStateOf("") }
-    var fatInput by remember { mutableStateOf("") }
-    var dateInput by remember { mutableStateOf("13.10.2026") }
+    // Временен продукт за избор на грамове (било то от скенер или търсене)
+    var selectedProductForGrams by remember { mutableStateOf<ProductDto?>(null) }
+
+    val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    var dateInput by remember { mutableStateOf(dateFormat.format(Date())) }
+
+    var showDatePicker by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var mealToEdit by remember { mutableStateOf<MealEntity?>(null) }
@@ -46,7 +54,6 @@ fun MealsScreen(viewModel: MealViewModel) {
                 TopAppBar(title = { Text("Smart Fitness - Хранения") })
             }
         ) { paddingValues ->
-            // Глобален скрол за целия екран
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -54,57 +61,116 @@ fun MealsScreen(viewModel: MealViewModel) {
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
-                Button(
-                    onClick = { isScanning = true },
+                // Бутони за добавяне: Скенер и Търсене по име
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("📷 Сканирай баркод на продукт")
+                    Button(
+                        onClick = { isScanning = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("📷 Сканирай")
+                    }
+                    Button(
+                        onClick = { showSearchDialog = true },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text("🔍 Търси име")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
-                    label = { Text("Име на храненето") },
+                    value = viewModel.mealNameInput,
+                    onValueChange = { viewModel.mealNameInput = it },
+                    label = { Text("Продукти") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = caloriesInput,
-                    onValueChange = { caloriesInput = it },
+                    value = viewModel.caloriesInput,
+                    onValueChange = { viewModel.caloriesInput = it },
                     label = { Text("Калории") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = proteinInput,
-                    onValueChange = { proteinInput = it },
+                    value = viewModel.proteinInput,
+                    onValueChange = { viewModel.proteinInput = it },
                     label = { Text("Протеини (g)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = carbsInput,
-                    onValueChange = { carbsInput = it },
+                    value = viewModel.carbsInput,
+                    onValueChange = { viewModel.carbsInput = it },
                     label = { Text("Въглехидрати (g)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = fatInput,
-                    onValueChange = { fatInput = it },
+                    value = viewModel.fatInput,
+                    onValueChange = { viewModel.fatInput = it },
                     label = { Text("Мазнини (g)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = dateInput,
-                    onValueChange = { dateInput = it },
-                    label = { Text("Дата (ДД.ММ.ГГГГ)") },
+
+                // Бутон за отмяна на последно добавено действие (Undo)
+                OutlinedButton(
+                    onClick = { viewModel.undoLastAction() },
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Text("↩️ Изчисти последно добавен продукт")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Поле за дата с календар
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
+                ) {
+                    OutlinedTextField(
+                        value = dateInput,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Дата (ДД.ММ.ГГГГ)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+
+                if (showDatePicker) {
+                    val calendar = Calendar.getInstance()
+                    try {
+                        calendar.time = dateFormat.parse(dateInput) ?: Date()
+                    } catch (_: Exception) {}
+
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, dayOfMonth ->
+                            calendar.set(year, month, dayOfMonth)
+                            dateInput = dateFormat.format(calendar.time)
+                            showDatePicker = false
+                        },
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH)
+                    ).apply {
+                        setOnCancelListener { showDatePicker = false }
+                    }.show()
+                }
 
                 if (errorMessage != null) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -115,13 +181,13 @@ fun MealsScreen(viewModel: MealViewModel) {
 
                 Button(
                     onClick = {
-                        val caloriesInt = caloriesInput.toIntOrNull() ?: -1
-                        val proteinDouble = proteinInput.toDoubleOrNull() ?: -1.0
-                        val carbsDouble = carbsInput.toDoubleOrNull() ?: -1.0
-                        val fatDouble = fatInput.toDoubleOrNull() ?: -1.0
+                        val caloriesInt = viewModel.caloriesInput.toIntOrNull() ?: -1
+                        val proteinDouble = viewModel.proteinInput.toDoubleOrNull() ?: -1.0
+                        val carbsDouble = viewModel.carbsInput.toDoubleOrNull() ?: 0.0
+                        val fatDouble = viewModel.fatInput.toDoubleOrNull() ?: 0.0
 
                         val validationResult = ValidationUtils.validateMeal(
-                            name = nameInput,
+                            name = viewModel.mealNameInput,
                             calories = caloriesInt,
                             protein = proteinDouble,
                             date = dateInput
@@ -132,7 +198,7 @@ fun MealsScreen(viewModel: MealViewModel) {
                                 errorMessage = null
                                 viewModel.insertMeal(
                                     MealEntity(
-                                        name = nameInput,
+                                        name = viewModel.mealNameInput,
                                         calories = caloriesInt,
                                         protein = proteinDouble,
                                         carbs = carbsDouble,
@@ -140,11 +206,7 @@ fun MealsScreen(viewModel: MealViewModel) {
                                         date = dateInput
                                     )
                                 )
-                                nameInput = ""
-                                caloriesInput = ""
-                                proteinInput = ""
-                                carbsInput = ""
-                                fatInput = ""
+                                viewModel.clearForm()
                             }
                             is ValidationResult.Error -> {
                                 errorMessage = validationResult.message
@@ -153,7 +215,7 @@ fun MealsScreen(viewModel: MealViewModel) {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Добави хранене")
+                    Text("Добави хранене в дневника")
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -162,9 +224,7 @@ fun MealsScreen(viewModel: MealViewModel) {
 
                 if (meals.isEmpty()) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("Все още няма добавени хранения.")
@@ -183,11 +243,13 @@ fun MealsScreen(viewModel: MealViewModel) {
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(text = meal.name, style = MaterialTheme.typography.bodyLarge)
+                                    Text(
+                                        text = meal.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        modifier = Modifier.weight(1f)
+                                    )
                                     Row {
-                                        TextButton(onClick = { mealToEdit = meal }) {
-                                            Text("Редактирай")
-                                        }
+                                        TextButton(onClick = { mealToEdit = meal }) { Text("Редактирай") }
                                         TextButton(onClick = { viewModel.deleteMeal(meal) }) {
                                             Text("Изтрий", color = MaterialTheme.colorScheme.error)
                                         }
@@ -204,46 +266,107 @@ fun MealsScreen(viewModel: MealViewModel) {
         }
     }
 
-    // Диалози за API, Редакция и Детайли
-    viewModel.scannedProduct?.let { product ->
-        val name = product.productName ?: "Неизвестен продукт"
-        val kcal = product.nutriments?.energyKcal100g?.toInt() ?: 0
-        val proteins = product.nutriments?.proteins100g ?: 0.0
-        val carbs = product.nutriments?.carbohydrates100g ?: 0.0
-        val fat = product.nutriments?.fat100g ?: 0.0
+    // Хващаме сканирания продукт и го пращаме към диалога за грамове
+    LaunchedEffect(viewModel.scannedProduct) {
+        viewModel.scannedProduct?.let {
+            selectedProductForGrams = it
+        }
+    }
 
+    // ДИАЛОГ ЗА ТЪРСЕНЕ ПО ИМЕ
+    if (showSearchDialog) {
         AlertDialog(
-            onDismissRequest = { viewModel.clearScannedProduct() },
-            title = { Text("Намерен продукт: $name") },
+            onDismissRequest = { showSearchDialog = false; viewModel.clearSearchResults() },
+            title = { Text("Търсене на продукт по име") },
             text = {
                 Column {
-                    Text("Стойности на 100g:")
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Въведете име (напр. banana)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { viewModel.searchProductsByName(searchQuery) }) {
+                        Text("Търси")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (viewModel.isLoadingProduct) {
+                        CircularProgressIndicator()
+                    } else {
+                        Column(modifier = Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState())) {
+                            viewModel.searchResults.forEach { product ->
+                                val prodName = product.productName ?: "Неизвестен"
+                                TextButton(onClick = {
+                                    selectedProductForGrams = product
+                                    showSearchDialog = false
+                                    viewModel.clearSearchResults()
+                                }) {
+                                    Text(prodName)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSearchDialog = false; viewModel.clearSearchResults() }) {
+                    Text("Затвори")
+                }
+            }
+        )
+    }
+
+    // ДИАЛОГ ЗА ВЪВЕЖДАНЕ НА ГРАМАЖ (ПОКАЗВА КАЛОРИИ, ПРОТЕИНИ, ВЪГЛЕХИДРАТИ И МАЗНИНИ НА 100g)
+    selectedProductForGrams?.let { product ->
+        val name = product.productName ?: "Неизвестен продукт"
+        val baseKcal = product.nutriments?.energyKcal100g ?: 0.0
+        val baseProteins = product.nutriments?.proteins100g ?: 0.0
+        val baseCarbs = product.nutriments?.carbohydrates100g ?: 0.0
+        val baseFat = product.nutriments?.fat100g ?: 0.0
+
+        var gramsInput by remember { mutableStateOf("100") }
+
+        AlertDialog(
+            onDismissRequest = { selectedProductForGrams = null; viewModel.clearScannedProduct() },
+            title = { Text("Продукт: $name") },
+            text = {
+                Column {
+                    Text("Стойности за 100g:")
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("🔥 Калории: $kcal kcal")
-                    Text("🥩 Протеини: $proteins g")
-                    Text("🍞 Въглехидрати: $carbs g")
-                    Text("🥑 Мазнини: $fat g")
+                    Text("🔥 Калории: $baseKcal kcal")
+                    Text("🥩 Протеини: $baseProteins g")
+                    Text("🍞 Въглехидрати: $baseCarbs g")
+                    Text("🥑 Мазнини: $baseFat g")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = gramsInput,
+                        onValueChange = { gramsInput = it },
+                        label = { Text("Въведете грамаж (g)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.insertMeal(
-                        MealEntity(
-                            name = name,
-                            calories = kcal,
-                            protein = proteins,
-                            carbs = carbs,
-                            fat = fat,
-                            date = dateInput
-                        )
+                    val grams = gramsInput.toDoubleOrNull() ?: 100.0
+                    viewModel.appendScannedProduct(
+                        productName = name,
+                        baseKcal = baseKcal,
+                        baseProtein = baseProteins,
+                        baseCarbs = baseCarbs,
+                        baseFat = baseFat,
+                        grams = grams
                     )
+                    selectedProductForGrams = null
                     viewModel.clearScannedProduct()
                 }) {
-                    Text("Запиши в дневника")
+                    Text("Добави към формата")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.clearScannedProduct() }) {
+                TextButton(onClick = { selectedProductForGrams = null; viewModel.clearScannedProduct() }) {
                     Text("Отказ")
                 }
             }
@@ -276,9 +399,7 @@ fun MealsScreen(viewModel: MealViewModel) {
                 }
             },
             confirmButton = {
-                Button(onClick = { mealToViewDetails = null }) {
-                    Text("Затвори")
-                }
+                Button(onClick = { mealToViewDetails = null }) { Text("Затвори") }
             }
         )
     }
