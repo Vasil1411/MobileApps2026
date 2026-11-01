@@ -97,4 +97,15 @@ dependencies {
         // Google ML Kit за сканиране на баркодове и QR кодове
         implementation("com.google.mlkit:barcode-scanning:17.3.0")
     }
+
+    // Unit тестване
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.13.5")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+
+// UI тестване (Compose)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation("io.mockk:mockk-android:1.13.5")
+
 }
