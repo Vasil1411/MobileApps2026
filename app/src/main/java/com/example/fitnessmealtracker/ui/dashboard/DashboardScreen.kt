@@ -23,18 +23,18 @@ import java.util.*
 @Composable
 fun DashboardScreen(
     dashboardViewModel: DashboardViewModel,
-    pedometerViewModel: PedometerViewModel,
+    pedometerViewModel: PedometerViewModel, // Може да се ползва за проверка, но стъпките идват от базата за дата
     meals: List<MealEntity>,
     workouts: List<WorkoutEntity>
 ) {
     val context = LocalContext.current
     val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-    val todayStr = dateFormat.format(Date())
 
-    var selectedDate by remember { mutableStateOf(todayStr) }
+    // Взимаме датата и стъпките директно от DashboardViewModel
+    val selectedDate by dashboardViewModel.selectedDate.collectAsState()
+    val stepsFromDb by dashboardViewModel.stepsForSelectedDate.collectAsState()
+
     var showDashboardDatePicker by remember { mutableStateOf(false) }
-
-    val steps = pedometerViewModel.stepCount
 
     val consumedCalories = CalorieCalculator.calculateTotalConsumedCalories(meals, selectedDate)
     val burnedCalories = CalorieCalculator.calculateTotalBurnedCalories(workouts, selectedDate)
@@ -56,7 +56,7 @@ fun DashboardScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Филтър за дата
+            // Филтър за дата със стрелките
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -73,7 +73,7 @@ fun DashboardScreen(
                             calendar.time = dateFormat.parse(selectedDate) ?: Date()
                         } catch (_: Exception) {}
                         calendar.add(Calendar.DAY_OF_YEAR, -1)
-                        selectedDate = dateFormat.format(calendar.time)
+                        dashboardViewModel.updateDate(dateFormat.format(calendar.time))
                     }) {
                         Text("<")
                     }
@@ -88,7 +88,7 @@ fun DashboardScreen(
                             calendar.time = dateFormat.parse(selectedDate) ?: Date()
                         } catch (_: Exception) {}
                         calendar.add(Calendar.DAY_OF_YEAR, 1)
-                        selectedDate = dateFormat.format(calendar.time)
+                        dashboardViewModel.updateDate(dateFormat.format(calendar.time))
                     }) {
                         Text(">")
                     }
@@ -105,7 +105,7 @@ fun DashboardScreen(
                     context,
                     { _, year, month, dayOfMonth ->
                         calendar.set(year, month, dayOfMonth)
-                        selectedDate = dateFormat.format(calendar.time)
+                        dashboardViewModel.updateDate(dateFormat.format(calendar.time))
                         showDashboardDatePicker = false
                     },
                     calendar.get(Calendar.YEAR),
@@ -116,14 +116,14 @@ fun DashboardScreen(
                 }.show()
             }
 
-            // Активност / Стъпки
+            // Активност / Стъпки спрямо избраната дата
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("👟 Днешна активност", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
+                    Text("👟 Активност ($selectedDate)", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -131,7 +131,7 @@ fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "$steps",
+                            text = "${stepsFromDb ?: 0}",
                             style = MaterialTheme.typography.displayMedium,
                             color = MaterialTheme.colorScheme.primary
                         )

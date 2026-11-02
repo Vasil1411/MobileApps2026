@@ -18,14 +18,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val database = AppDatabase.getDatabase(application)
     private val mealDao = database.mealDao()
     private val workoutDao = database.workoutDao()
+    private val stepDao = database.stepDao() // <-- Взимаме StepDao
 
     private val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
 
-    // Държим текущо избраната дата като StateFlow
     private val _selectedDate = MutableStateFlow(dateFormat.format(Date()))
     val selectedDate: StateFlow<String> = _selectedDate
 
-    // Функция, която трябва да се извиква от UI, когато потребителят цъкне стрелките за дата
     fun updateDate(newDate: String) {
         _selectedDate.value = newDate
     }
@@ -38,5 +37,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     @OptIn(ExperimentalCoroutinesApi::class)
     val totalCaloriesBurned: StateFlow<Int?> = _selectedDate.flatMapLatest { date ->
         workoutDao.getTotalCaloriesBurnedForDate(date)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // Динамично зареждане на стъпките от базата спрямо избраната дата
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val stepsForSelectedDate: StateFlow<Int?> = _selectedDate.flatMapLatest { date ->
+        stepDao.getStepsForDate(date)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 }
