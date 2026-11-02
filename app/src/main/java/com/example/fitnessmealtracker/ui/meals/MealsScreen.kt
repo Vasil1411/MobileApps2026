@@ -1,6 +1,7 @@
 package com.example.fitnessmealtracker.ui.meals
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -234,10 +235,19 @@ fun MealsScreen(viewModel: MealViewModel) {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clickable { mealToViewDetails = meal }
+                                .padding(vertical = 6.dp)
+                                .clickable { mealToViewDetails = meal },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -245,19 +255,61 @@ fun MealsScreen(viewModel: MealViewModel) {
                                 ) {
                                     Text(
                                         text = meal.name,
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.weight(1f)
                                     )
                                     Row {
-                                        TextButton(onClick = { mealToEdit = meal }) { Text("Редактирай") }
-                                        TextButton(onClick = { viewModel.deleteMeal(meal) }) {
-                                            Text("Изтрий", color = MaterialTheme.colorScheme.error)
+                                        TextButton(
+                                            onClick = { mealToEdit = meal },
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                        ) {
+                                            Text("✏️ Редактирай", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                        TextButton(
+                                            onClick = { viewModel.deleteMeal(meal) },
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                        ) {
+                                            Text("🗑️ Изтрий", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                                         }
                                     }
                                 }
-                                Text(text = "Калории: ${meal.calories} kcal")
-                                Text(text = "П: ${meal.protein}g | В: ${meal.carbs}g | М: ${meal.fat}g")
-                                Text(text = "Дата: ${meal.date}", style = MaterialTheme.typography.bodySmall)
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "🔥 ${meal.calories} kcal",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = meal.date,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shape = MaterialTheme.shapes.small,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "П: ${meal.protein}g   |   В: ${meal.carbs}g   |   М: ${meal.fat}g",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -301,6 +353,7 @@ fun MealsScreen(viewModel: MealViewModel) {
                                 TextButton(onClick = {
                                     selectedProductForGrams = product
                                     showSearchDialog = false
+                                    searchQuery = "" // Изчистване на полето за търсене след избор
                                     viewModel.clearSearchResults()
                                 }) {
                                     Text(prodName)
@@ -311,14 +364,18 @@ fun MealsScreen(viewModel: MealViewModel) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showSearchDialog = false; viewModel.clearSearchResults() }) {
+                TextButton(onClick = {
+                    showSearchDialog = false
+                    searchQuery = ""
+                    viewModel.clearSearchResults()
+                }) {
                     Text("Затвори")
                 }
             }
         )
     }
 
-    // ДИАЛОГ ЗА ВЪВЕЖДАНЕ НА ГРАМАЖ (ПОКАЗВА КАЛОРИИ, ПРОТЕИНИ, ВЪГЛЕХИДРАТИ И МАЗНИНИ НА 100g)
+    // ДИАЛОГ ЗА ВЪВЕЖДАНЕ НА ГРАМАЖ
     selectedProductForGrams?.let { product ->
         val name = product.productName ?: "Неизвестен продукт"
         val baseKcal = product.nutriments?.energyKcal100g ?: 0.0
