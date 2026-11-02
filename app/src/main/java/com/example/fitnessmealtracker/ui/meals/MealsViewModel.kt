@@ -59,7 +59,7 @@ class MealViewModel(private val repository: MealRepositoryImpl) : ViewModel() {
         val addedFat = baseFat * multiplier
 
         addedItemsHistory.add(
-            AddedItemRecord(productName, grams, addedKcal, addedProtein, addedCarbs, addedFat)
+            AddedItemRecord(productName, grams, addedKcal.toInt(), addedProtein, addedCarbs, addedFat)
         )
         rebuildFormFromHistory()
     }
